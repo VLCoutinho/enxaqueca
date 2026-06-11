@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Enxaqueca">
+  <meta name="description" content="Diário de registro diário de enxaqueca">
+  <title>Diário de Enxaqueca</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ===== DESIGN TOKENS ===== */
+    :root {
+      --c-bg: #f8f7ff;
+      --c-surface: #ffffff;
+      --c-surface2: #f0effe;
+      --c-primary: #4f46e5;
+      --c-primary-light: #6366f1;
+      --c-primary-dim: #e0e7ff;
+      --c-accent: #7c3aed;
+      --c-danger: #dc2626;
+      --c-danger-dim: #fee2e2;
+      --c-success: #16a34a;
+      --c-success-dim: #dcfce7;
+      --c-warn: #d97706;
+      --c-warn-dim: #fef3c7;
+      --c-text: #1e1b4b;
+      --c-text-2: #4338ca;
+      --c-text-muted: #6b7280;
+      --c-border: #c7d2fe;
+      --c-border-focus: #4f46e5;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(79,70,229,.1), 0 1px 2px rgba(79,70,229,.06);
+      --shadow-md: 0 4px 6px rgba(79,70,229,.1), 0 2px 4px rgba(79,70,229,.06);
+      --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--c-bg);
+      color: var(--c-text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app-header {
+      background: var(--c-primary);
+      color: #fff;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(79,70,229,.3);
+    }
+    .app-header h1 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+    .app-header p {
+      font-size: .75rem;
+      opacity: .8;
+      margin-top: 2px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* ===== STORAGE BANNER ===== */
+    #storage-banner {
+      display: none;
+      background: var(--c-warn-dim);
+      border: 1px solid var(--c-warn);
+      color: var(--c-warn);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: .8125rem;
+      margin-bottom: 16px;
+    }
+
+    /* ===== SECTION CARDS ===== */
+    .section-card {
+      background: var(--c-surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid var(--c-border);
+    }
+    .section-title {
+      font-size: .6875rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--c-primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--c-border);
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-size: .8125rem;
+      font-weight: 600;
+      color: var(--c-text-2);
+      margin-bottom: 5px;
+    }
+    label .required-mark {
+      color: var(--c-danger);
+      margin-left: 2px;
+    }
+
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 14px;
+      background: var(--c-bg);
+      border: 1.5px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-family: var(--font-sans);
+      color: var(--c-text);
+      transition: border-color .15s, box-shadow .15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    input[type="date"]:focus,
+    input[type="time"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--c-border-focus);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+      background: var(--c-surface);
+    }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ===== STARS ===== */
+    .stars-wrapper { display: flex; align-items: center; gap: 8px; }
+    .stars {
+      display: flex;
+      flex-direction: row-reverse;
+      gap: 3px;
+    }
+    .stars input { display: none; }
+    .stars label {
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #d1d5db;
+      transition: color .1s, transform .1s;
+      padding: 2px;
+      margin: 0;
+    }
+    .stars input:checked ~ label,
+    .stars label:hover,
+    .stars label:hover ~ label { color: #f59e0b; transform: scale(1.1); }
+    .stars-value {
+      font-size: .9375rem;
+      font-weight: 700;
+      color: var(--c-primary);
+      min-width: 32px;
+    }
+
+    /* ===== PILL BUTTONS (radio/checkbox groups) ===== */
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill-group input { display: none; }
+    .pill-group label {
+      display: inline-block;
+      padding: 7px 14px;
+      min-height: 36px;
+      background: var(--c-bg);
+      border: 1.5px solid var(--c-border);
+      border-radius: 999px;
+      font-size: .8125rem;
+      font-weight: 500;
+      color: var(--c-text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .pill-group input:checked + label {
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .pill-group label:hover {
+      border-color: var(--c-primary-light);
+      color: var(--c-primary);
+    }
+
+    /* ===== DOR INTENSITY (special) ===== */
+    .dor-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .dor-group input { display: none; }
+    .dor-group label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 12px 8px;
+      min-height: 72px;
+      background: var(--c-bg);
+      border: 2px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      font-size: .8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: center;
+    }
+    .dor-group label .dor-icon { font-size: 1.375rem; }
+    .dor-group input:checked + label { color: #fff; border-color: transparent; }
+    #dor-fraca:checked + label { background: #16a34a; }
+    #dor-moderada:checked + label { background: #d97706; }
+    #dor-forte:checked + label { background: #ea580c; }
+    #dor-intensa:checked + label { background: #dc2626; }
+
+    /* ===== MEDICAMENTOS ===== */
+    .med-list { list-style: none; margin-bottom: 12px; }
+    .med-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--c-surface2);
+      border-radius: var(--radius-sm);
+      font-size: .875rem;
+      margin-bottom: 6px;
+    }
+    .med-list li:last-child { margin-bottom: 0; }
+    .med-list .med-name { font-weight: 500; }
+    .btn-del-med {
+      background: none;
+      border: none;
+      color: var(--c-danger);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      line-height: 1;
+      min-height: unset;
+    }
+    .btn-del-med:hover { background: var(--c-danger-dim); }
+
+    .med-add-row {
+      display: flex;
+      gap: 8px;
+    }
+    .med-add-row input {
+      flex: 1;
+      min-height: 40px;
+    }
+
+    .med-check-list { list-style: none; }
+    .med-check-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 4px;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .med-check-list li:last-child { border-bottom: none; }
+    .med-check-list input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      min-height: unset;
+      accent-color: var(--c-primary);
+      cursor: pointer;
+    }
+    .med-check-list label {
+      font-size: .9rem;
+      font-weight: 400;
+      color: var(--c-text);
+      cursor: pointer;
+      margin: 0;
+    }
+    .med-empty {
+      font-size: .8125rem;
+      color: var(--c-text-muted);
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 48px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: .9375rem;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all .15s;
+      width: 100%;
+    }
+    .btn-primary {
+      background: var(--c-primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--c-accent); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--c-surface);
+      color: var(--c-primary);
+      border: 1.5px solid var(--c-primary);
+    }
+    .btn-secondary:hover { background: var(--c-primary-dim); }
+    .btn-sm {
+      min-height: 36px;
+      padding: 6px 14px;
+      font-size: .8125rem;
+      width: auto;
+    }
+    .btn-success { background: var(--c-success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    /* ===== ERROR / FEEDBACK ===== */
+    .field-error {
+      font-size: .75rem;
+      color: var(--c-danger);
+      margin-top: 4px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+    .field.has-error input,
+    .field.has-error select,
+    .field.has-error textarea {
+      border-color: var(--c-danger);
+    }
+
+    #save-feedback {
+      display: none;
+      background: var(--c-success-dim);
+      border: 1px solid var(--c-success);
+      color: var(--c-success);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: .875rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    #save-feedback.visible { display: block; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(30,27,75,.5);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--c-surface);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 24px 20px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 -4px 24px rgba(79,70,229,.2);
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal h2 {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--c-text);
+      margin-bottom: 16px;
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-actions .btn { flex: 1; }
+
+    /* ===== FOOTER ===== */
+    .app-footer {
+      text-align: center;
+      padding: 20px;
+      font-size: .75rem;
+      color: var(--c-text-muted);
+    }
+
+    @media (min-width: 480px) {
+      .dor-group { grid-template-columns: repeat(4, 1fr); }
+      .actions { flex-direction: row; }
+      .actions .btn { flex: 1; }
+      .modal-overlay { align-items: center; padding: 20px; }
+      .modal { border-radius: var(--radius); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🧠 Diário de Enxaqueca</h1>
+  <p id="header-date">Carregando...</p>
+</header>
+
+<main class="container" role="main">
+
+  <div id="storage-banner" role="alert">
+    ⚠️ Armazenamento quase cheio (<span id="storage-used"></span>MB de ~5MB utilizados). Considere exportar e limpar registros antigos.
+  </div>
+
+  <div id="save-feedback" role="status" aria-live="polite">
+    ✅ Registro salvo com sucesso!
+  </div>
+
+  <form id="main-form" novalidate>
+
+    <!-- 1. DATA -->
+    <section class="section-card">
+      <h2 class="section-title">Data do Registro</h2>
+      <div class="field" id="field-data">
+        <label for="data-registro">Data<span class="required-mark">*</span></label>
+        <input type="date" id="data-registro" name="data" required>
+        <span class="field-error" id="error-data">Por favor, informe a data.</span>
+      </div>
+    </section>
+
+    <!-- 2. SONO -->
+    <section class="section-card">
+      <h2 class="section-title">Sono</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="hora-dormir">Dormiu às</label>
+          <input type="time" id="hora-dormir" name="horaDormir">
+        </div>
+        <div class="field">
+          <label for="hora-acordar">Acordou às</label>
+          <input type="time" id="hora-acordar" name="horaAcordar">
+        </div>
+      </div>
+      <div class="field">
+        <label>Qualidade do sono</label>
+        <div class="stars-wrapper">
+          <div class="stars" id="stars-sono">
+            <input type="radio" id="s10" name="sonoQualidade" value="10"><label for="s10" title="10">★</label>
+            <input type="radio" id="s9"  name="sonoQualidade" value="9"><label for="s9"  title="9">★</label>
+            <input type="radio" id="s8"  name="sonoQualidade" value="8"><label for="s8"  title="8">★</label>
+            <input type="radio" id="s7"  name="sonoQualidade" value="7"><label for="s7"  title="7">★</label>
+            <input type="radio" id="s6"  name="sonoQualidade" value="6"><label for="s6"  title="6">★</label>
+            <input type="radio" id="s5"  name="sonoQualidade" value="5"><label for="s5"  title="5">★</label>
+            <input type="radio" id="s4"  name="sonoQualidade" value="4"><label for="s4"  title="4">★</label>
+            <input type="radio" id="s3"  name="sonoQualidade" value="3"><label for="s3"  title="3">★</label>
+            <input type="radio" id="s2"  name="sonoQualidade" value="2"><label for="s2"  title="2">★</label>
+            <input type="radio" id="s1"  name="sonoQualidade" value="1"><label for="s1"  title="1">★</label>
+          </div>
+          <span class="stars-value" id="stars-value">—/10</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ALIMENTAÇÃO -->
+    <section class="section-card">
+      <h2 class="section-title">Alimentação</h2>
+      <div class="field">
+        <label for="alim-manha">Manhã</label>
+        <textarea id="alim-manha" name="alimManha" placeholder="Descreva o que comeu pela manhã"></textarea>
+      </div>
+      <div class="field">
+        <label for="alim-tarde">Tarde</label>
+        <textarea id="alim-tarde" name="alimTarde" placeholder="Descreva o que comeu à tarde"></textarea>
+      </div>
+      <div class="field">
+        <label for="alim-noite">Noite</label>
+        <textarea id="alim-noite" name="alimNoite" placeholder="Descreva o que comeu à noite"></textarea>
+      </div>
+    </section>
+
+    <!-- 4. INTESTINO -->
+    <section class="section-card">
+      <h2 class="section-title">Funcionamento Intestinal</h2>
+      <div class="field">
+        <label>Evacuações no dia</label>
+        <div class="pill-group" role="radiogroup">
+          <input type="radio" id="int-0" name="intestino" value="nenhuma"><label for="int-0">Nenhuma</label>
+          <input type="radio" id="int-1" name="intestino" value="1 vez"><label for="int-1">1 vez</label>
+          <input type="radio" id="int-2" name="intestino" value="2 vezes"><label for="int-2">2 vezes</label>
+          <input type="radio" id="int-3" name="intestino" value="mais de duas"><label for="int-3">+ de 2 vezes</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ATIVIDADE FÍSICA -->
+    <section class="section-card">
+      <h2 class="section-title">Atividade Física</h2>
+      <div class="field">
+        <label for="atividade">Atividades realizadas</label>
+        <textarea id="atividade" name="atividadeFisica" placeholder="Descreva esforços físicos ou exercícios realizados no dia"></textarea>
+      </div>
+    </section>
+
+    <!-- 6. EMOCIONAL -->
+    <section class="section-card">
+      <h2 class="section-title">Estado Emocional</h2>
+      <div class="field">
+        <label>Como estava emocionalmente?</label>
+        <div class="pill-group" role="radiogroup">
+          <input type="radio" id="em-normal"      name="emocional" value="normal"><label for="em-normal">😐 Normal</label>
+          <input type="radio" id="em-alegre"      name="emocional" value="alegre"><label for="em-alegre">😊 Alegre</label>
+          <input type="radio" id="em-triste"      name="emocional" value="triste"><label for="em-triste">😔 Triste</label>
+          <input type="radio" id="em-preocupacao" name="emocional" value="preocupação"><label for="em-preocupacao">😟 Preocupação</label>
+          <input type="radio" id="em-ansiedade"   name="emocional" value="ansiedade"><label for="em-ansiedade">😰 Ansiedade</label>
+          <input type="radio" id="em-nervoso"     name="emocional" value="nervoso"><label for="em-nervoso">😤 Nervoso</label>
+          <input type="radio" id="em-stress"      name="emocional" value="stress"><label for="em-stress">🤯 Stress</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. CLIMA -->
+    <section class="section-card">
+      <h2 class="section-title">Clima</h2>
+      <div class="field">
+        <label>Condição climática do dia</label>
+        <div class="pill-group" role="radiogroup">
+          <input type="radio" id="cl-normal" name="clima" value="normal"><label for="cl-normal">🌤️ Normal</label>
+          <input type="radio" id="cl-calor"  name="clima" value="muito calor"><label for="cl-calor">🥵 Muito calor</label>
+          <input type="radio" id="cl-frio"   name="clima" value="muito frio"><label for="cl-frio">🥶 Muito frio</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. CICLO MENSTRUAL -->
+    <section class="section-card">
+      <h2 class="section-title">Ciclo Menstrual</h2>
+      <div class="field">
+        <label>Fase do ciclo</label>
+        <div class="pill-group" role="radiogroup">
+          <input type="radio" id="cm-normal"  name="cicloMenstrual" value="normal"><label for="cm-normal">Normal</label>
+          <input type="radio" id="cm-escape"  name="cicloMenstrual" value="escape"><label for="cm-escape">Escape</label>
+          <input type="radio" id="cm-inicio"  name="cicloMenstrual" value="início de ciclo"><label for="cm-inicio">Início de ciclo</label>
+          <input type="radio" id="cm-grande"  name="cicloMenstrual" value="fluxo grande"><label for="cm-grande">Fluxo grande</label>
+          <input type="radio" id="cm-final"   name="cicloMenstrual" value="final de ciclo"><label for="cm-final">Final de ciclo</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. MEDICAMENTOS -->
+    <section class="section-card">
+      <h2 class="section-title">Medicamentos</h2>
+
+      <div style="margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--c-border);">
+        <label style="margin-bottom:8px; color:var(--c-text-muted);">Gerenciar medicamentos cadastrados</label>
+        <ul class="med-list" id="med-cadastrados-lista"></ul>
+        <div class="med-add-row">
+          <input type="text" id="novo-med-input" placeholder="Nome do medicamento" maxlength="80" aria-label="Novo medicamento">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-med">+ Adicionar</button>
+        </div>
+      </div>
+
+      <div>
+        <label style="margin-bottom:8px;">Medicamentos usados hoje</label>
+        <ul class="med-check-list" id="med-check-lista">
+          <li><span class="med-empty">Nenhum medicamento cadastrado ainda.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 10. INTENSIDADE DA DOR -->
+    <section class="section-card" style="border:2px solid var(--c-primary);">
+      <h2 class="section-title">Intensidade da Dor <span class="required-mark">*</span></h2>
+      <div class="field" id="field-dor">
+        <div class="dor-group" role="radiogroup" aria-required="true">
+          <input type="radio" id="dor-fraca"    name="intensidadeDor" value="fraca">
+          <label for="dor-fraca"><span class="dor-icon">🟢</span> Fraca</label>
+          <input type="radio" id="dor-moderada" name="intensidadeDor" value="moderada">
+          <label for="dor-moderada"><span class="dor-icon">🟡</span> Moderada</label>
+          <input type="radio" id="dor-forte"    name="intensidadeDor" value="forte">
+          <label for="dor-forte"><span class="dor-icon">🟠</span> Forte</label>
+          <input type="radio" id="dor-intensa"  name="intensidadeDor" value="intensa">
+          <label for="dor-intensa"><span class="dor-icon">🔴</span> Intensa</label>
+        </div>
+        <span class="field-error" id="error-dor">Selecione a intensidade da dor.</span>
+      </div>
+    </section>
+
+    <!-- 11. OBSERVAÇÕES -->
+    <section class="section-card">
+      <h2 class="section-title">Observações</h2>
+      <div class="field">
+        <label for="observacoes">Anotações livres</label>
+        <textarea id="observacoes" name="observacoes" rows="4"
+          placeholder="Anote qualquer observação relevante: sintomas adicionais, eventos do dia, procedimentos, consultas médicas..."></textarea>
+      </div>
+    </section>
+
+    <!-- AÇÕES -->
+    <div class="actions">
+      <button type="button" class="btn btn-secondary" id="btn-limpar">🗑️ Limpar</button>
+      <button type="submit" class="btn btn-primary"   id="btn-salvar" disabled>💾 Salvar Registro</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <button type="button" class="btn btn-success" id="btn-exportar">📄 Exportar PDF</button>
+    </div>
+
+  </form>
+
+  <footer class="app-footer">
+    Diário de Enxaqueca · Dados armazenados localmente no dispositivo
+  </footer>
+
+</main>
+
+<!-- MODAL EXPORTAR PDF -->
+<div class="modal-overlay" id="modal-exportar" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <h2 id="modal-title">📄 Exportar PDF</h2>
+    <div class="field">
+      <label for="pdf-inicio">Data de início</label>
+      <input type="date" id="pdf-inicio">
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label for="pdf-fim">Data de fim</label>
+      <input type="date" id="pdf-fim">
+    </div>
+    <div id="pdf-error" style="display:none; color:var(--c-danger); font-size:.8125rem; margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="btn-modal-fechar">Cancelar</button>
+      <button type="button" class="btn btn-primary"   id="btn-gerar-pdf">Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DADOS =====
+const STORAGE_KEY = 'diario_enxaqueca_v1';
+
+function getData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { registros: {}, medicamentosCadastrados: [] };
+    return JSON.parse(raw);
+  } catch { return { registros: {}, medicamentosCadastrados: [] }; }
+}
+
+function saveData(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    if (e.name === 'QuotaExceededError') {
+      alert('❌ Armazenamento cheio! Exporte e limpe registros antigos antes de continuar.');
+    }
+    return false;
+  }
+}
+
+// ===== STORAGE CHECK =====
+async function checkStorage() {
+  if (!navigator.storage || !navigator.storage.estimate) return;
+  try {
+    if (navigator.storage.persist) await navigator.storage.persist();
+    const { usage, quota } = await navigator.storage.estimate();
+    const usedMB = usage / 1024 / 1024;
+    const quotaMB = quota / 1024 / 1024;
+    const pct = usedMB / quotaMB;
+    if (pct > 0.85) {
+      document.getElementById('storage-used').textContent = usedMB.toFixed(2);
+      document.getElementById('storage-banner').style.display = 'block';
+    }
+  } catch {}
+}
+
+// ===== DATA ATUAL =====
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function formatDateBR(isoStr) {
+  if (!isoStr) return '—';
+  const [y, m, d] = isoStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ===== HEADER DATE =====
+function updateHeaderDate() {
+  const now = new Date();
+  const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  document.getElementById('header-date').textContent = now.toLocaleDateString('pt-BR', opts);
+}
+
+// ===== STARS =====
+function updateStarsValue() {
+  const checked = document.querySelector('input[name="sonoQualidade"]:checked');
+  document.getElementById('stars-value').textContent = checked ? `${checked.value}/10` : '—/10';
+}
+document.querySelectorAll('input[name="sonoQualidade"]').forEach(r => {
+  r.addEventListener('change', updateStarsValue);
+});
+
+// ===== MEDICAMENTOS =====
+function renderMedCadastrados() {
+  const data = getData();
+  const meds = data.medicamentosCadastrados || [];
+  const lista = document.getElementById('med-cadastrados-lista');
+  lista.innerHTML = meds.length === 0 
+    ? '<li style="padding:6px 0; font-size:.8125rem; color:var(--c-text-muted); font-style:italic;">Nenhum medicamento cadastrado.</li>'
+    : meds.map((m, i) => `
+        <li>
+          <span class="med-name">${escapeHtml(m)}</span>
+          <button type="button" class="btn-del-med" data-idx="${i}" aria-label="Remover ${escapeHtml(m)}">✕</button>
+        </li>`).join('');
+
+  lista.querySelectorAll('.btn-del-med').forEach(btn => {
+    btn.addEventListener('click', () => deleteMed(parseInt(btn.dataset.idx)));
+  });
+  renderMedChecks();
+}
+
+function renderMedChecks() {
+  const data = getData();
+  const meds = data.medicamentosCadastrados || [];
+  const lista = document.getElementById('med-check-lista');
+  if (meds.length === 0) {
+    lista.innerHTML = '<li><span class="med-empty">Nenhum medicamento cadastrado ainda.</span></li>';
+    return;
+  }
+  lista.innerHTML = meds.map((m, i) => `
+    <li>
+      <input type="checkbox" id="medcheck-${i}" name="medicamento" value="${escapeHtml(m)}">
+      <label for="medcheck-${i}">${escapeHtml(m)}</label>
+    </li>`).join('');
+}
+
+function addMed() {
+  const input = document.getElementById('novo-med-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const data = getData();
+  if (!data.medicamentosCadastrados) data.medicamentosCadastrados = [];
+  if (data.medicamentosCadastrados.includes(name)) {
+    input.value = '';
+    return;
+  }
+  data.medicamentosCadastrados.push(name);
+  saveData(data);
+  input.value = '';
+  renderMedCadastrados();
+}
+
+function deleteMed(idx) {
+  const data = getData();
+  data.medicamentosCadastrados.splice(idx, 1);
+  saveData(data);
+  renderMedCadastrados();
+}
+
+document.getElementById('btn-add-med').addEventListener('click', addMed);
+document.getElementById('novo-med-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addMed(); }
+});
+
+// ===== VALIDATE / ENABLE SAVE =====
+function validateForm() {
+  const data = document.getElementById('data-registro').value;
+  const dor  = document.querySelector('input[name="intensidadeDor"]:checked');
+  let valid = true;
+
+  const fieldData = document.getElementById('field-data');
+  const errData   = document.getElementById('error-data');
+  if (!data) {
+    fieldData.classList.add('has-error');
+    errData.classList.add('visible');
+    valid = false;
+  } else {
+    fieldData.classList.remove('has-error');
+    errData.classList.remove('visible');
+  }
+
+  const fieldDor = document.getElementById('field-dor');
+  const errDor   = document.getElementById('error-dor');
+  if (!dor) {
+    fieldDor.classList.add('has-error');
+    errDor.classList.add('visible');
+    valid = false;
+  } else {
+    fieldDor.classList.remove('has-error');
+    errDor.classList.remove('visible');
+  }
+
+  document.getElementById('btn-salvar').disabled = !valid;
+  return valid;
+}
+
+document.getElementById('data-registro').addEventListener('change', validateForm);
+document.querySelectorAll('input[name="intensidadeDor"]').forEach(r => r.addEventListener('change', validateForm));
+
+// ===== LOAD EXISTING RECORD FOR DATE =====
+function loadRecordForDate(dateStr) {
+  const data = getData();
+  const rec  = data.registros && data.registros[dateStr];
+  if (!rec) return;
+
+  // Sono
+  if (rec.sono) {
+    setVal('hora-dormir', rec.sono.horaDormir);
+    setVal('hora-acordar', rec.sono.horaAcordar);
+    if (rec.sono.qualidade) {
+      const star = document.getElementById('s' + rec.sono.qualidade);
+      if (star) { star.checked = true; updateStarsValue(); }
+    }
+  }
+  // Alim
+  if (rec.alimentacao) {
+    setVal('alim-manha', rec.alimentacao.manha);
+    setVal('alim-tarde', rec.alimentacao.tarde);
+    setVal('alim-noite', rec.alimentacao.noite);
+  }
+  // Intestino
+  checkRadio('intestino', rec.intestino);
+  // Atividade
+  setVal('atividade', rec.atividadeFisica);
+  // Emocional
+  checkRadio('emocional', rec.emocional);
+  // Clima
+  checkRadio('clima', rec.clima);
+  // Ciclo
+  checkRadio('cicloMenstrual', rec.cicloMenstrual);
+  // Medicamentos
+  if (rec.medicamentos && rec.medicamentos.length) {
+    setTimeout(() => {
+      rec.medicamentos.forEach(m => {
+        document.querySelectorAll('input[name="medicamento"]').forEach(cb => {
+          if (cb.value === m) cb.checked = true;
+        });
+      });
+    }, 50);
+  }
+  // Dor
+  checkRadio('intensidadeDor', rec.intensidadeDor);
+  // Obs
+  setVal('observacoes', rec.observacoes);
+  validateForm();
+}
+
+document.getElementById('data-registro').addEventListener('change', function() {
+  loadRecordForDate(this.value);
+});
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== undefined && val !== null) el.value = val;
+}
+function checkRadio(name, val) {
+  if (!val) return;
+  const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+  if (el) el.checked = true;
+}
+
+// ===== SALVAR =====
+document.getElementById('main-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  if (!validateForm()) return;
+
+  const dateStr = document.getElementById('data-registro').value;
+  const meds    = [...document.querySelectorAll('input[name="medicamento"]:checked')].map(c => c.value);
+  const star    = document.querySelector('input[name="sonoQualidade"]:checked');
+  const dor     = document.querySelector('input[name="intensidadeDor"]:checked');
+  const intesto = document.querySelector('input[name="intestino"]:checked');
+  const emoc    = document.querySelector('input[name="emocional"]:checked');
+  const clim    = document.querySelector('input[name="clima"]:checked');
+  const ciclo   = document.querySelector('input[name="cicloMenstrual"]:checked');
+
+  const record = {
+    data: dateStr,
+    sono: {
+      horaDormir: document.getElementById('hora-dormir').value || null,
+      horaAcordar: document.getElementById('hora-acordar').value || null,
+      qualidade: star ? parseInt(star.value) : null
+    },
+    alimentacao: {
+      manha: document.getElementById('alim-manha').value || null,
+      tarde: document.getElementById('alim-tarde').value || null,
+      noite: document.getElementById('alim-noite').value || null
+    },
+    intestino: intesto ? intesto.value : null,
+    atividadeFisica: document.getElementById('atividade').value || null,
+    emocional: emoc ? emoc.value : null,
+    clima: clim ? clim.value : null,
+    cicloMenstrual: ciclo ? ciclo.value : null,
+    medicamentos: meds,
+    intensidadeDor: dor ? dor.value : null,
+    observacoes: document.getElementById('observacoes').value || null
+  };
+
+  const data = getData();
+  if (!data.registros) data.registros = {};
+  data.registros[dateStr] = record;
+  const ok = saveData(data);
+
+  if (ok) {
+    const fb = document.getElementById('save-feedback');
+    fb.classList.add('visible');
+    setTimeout(() => fb.classList.remove('visible'), 3000);
+    checkStorage();
+  }
+});
+
+// ===== LIMPAR =====
+document.getElementById('btn-limpar').addEventListener('click', () => {
+  if (!confirm('Limpar todos os campos do formulário? O registro salvo não será apagado.')) return;
+  document.getElementById('main-form').reset();
+  document.getElementById('data-registro').value = todayStr();
+  document.getElementById('stars-value').textContent = '—/10';
+  document.getElementById('btn-salvar').disabled = true;
+  validateForm();
+});
+
+// ===== MODAL PDF =====
+const modalEl    = document.getElementById('modal-exportar');
+const pdfInicioEl = document.getElementById('pdf-inicio');
+const pdfFimEl    = document.getElementById('pdf-fim');
+
+document.getElementById('btn-exportar').addEventListener('click', () => {
+  const today = todayStr();
+  pdfInicioEl.value = today;
+  pdfFimEl.value    = today;
+  document.getElementById('pdf-error').style.display = 'none';
+  modalEl.classList.add('open');
+});
+document.getElementById('btn-modal-fechar').addEventListener('click', () => modalEl.classList.remove('open'));
+modalEl.addEventListener('click', e => { if (e.target === modalEl) modalEl.classList.remove('open'); });
+
+document.getElementById('btn-gerar-pdf').addEventListener('click', gerarPDF);
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function dorLabel(dor) {
+  return { fraca:'Fraca', moderada:'Moderada', forte:'Forte', intensa:'Intensa' }[dor] || (dor || '—');
+}
+
+function starsStr(n) {
+  if (!n) return '—';
+  return '★'.repeat(n) + '☆'.repeat(10 - n) + ' (' + n + '/10)';
+}
+
+// Quebra texto longo em múltiplas linhas respeitando largura máxima em caracteres
+function wrapText(doc, text, maxChars) {
+  if (!text) return ['—'];
+  const words = String(text).replace(/\r?\n/g, ' \n ').split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    if (word === '\n') {
+      lines.push(line.trim());
+      line = '';
+    } else if ((line + ' ' + word).trim().length > maxChars) {
+      if (line.trim()) lines.push(line.trim());
+      line = word;
+    } else {
+      line = line ? line + ' ' + word : word;
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  return lines.length ? lines : ['—'];
+}
+
+function gerarPDF() {
+  const inicio = pdfInicioEl.value;
+  const fim    = pdfFimEl.value;
+  const errEl  = document.getElementById('pdf-error');
+  errEl.style.display = 'none';
+
+  if (!inicio || !fim) {
+    errEl.textContent = 'Informe as duas datas.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (inicio > fim) {
+    errEl.textContent = 'Data de início deve ser anterior ao fim.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const appData   = getData();
+  const registros = appData.registros || {};
+  const keys      = Object.keys(registros).filter(d => d >= inicio && d <= fim).sort();
+
+  if (keys.length === 0) {
+    errEl.textContent = 'Nenhum registro encontrado no período selecionado.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  modalEl.classList.remove('open');
+
+  // Pequeno delay para fechar modal antes de gerar
+  setTimeout(() => {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+      const PW = 210;  // largura A4
+      const PH = 297;  // altura A4
+      const ML = 12;   // margem esquerda
+      const MR = 12;   // margem direita
+      const MT = 14;   // margem topo
+      const MB = 14;   // margem base
+      const CW = PW - ML - MR;  // largura de conteúdo
+
+      // Cores
+      const C_PRIMARY  = [79, 70, 229];
+      const C_DARK     = [30, 27, 75];
+      const C_GRAY     = [107, 114, 128];
+      const C_STRIPE   = [240, 239, 254];
+      const C_WHITE    = [255, 255, 255];
+      const C_FRACA    = [22, 163, 74];
+      const C_MODERADA = [217, 119, 6];
+      const C_FORTE    = [234, 88, 12];
+      const C_INTENSA  = [220, 38, 38];
+
+      function dorColor(dor) {
+        return { fraca: C_FRACA, moderada: C_MODERADA, forte: C_FORTE, intensa: C_INTENSA }[dor] || C_PRIMARY;
+      }
+
+      let y = MT;
+      let pageNum = 1;
+
+      function addPage() {
+        // Rodapé antes de virar a página
+        drawFooter();
+        doc.addPage();
+        pageNum++;
+        y = MT;
+      }
+
+      function checkY(needed) {
+        if (y + needed > PH - MB) addPage();
+      }
+
+      function drawFooter() {
+        doc.setFontSize(8);
+        doc.setTextColor(...C_GRAY);
+        doc.text(
+          `Diário de Enxaqueca  ·  Gerado em ${new Date().toLocaleString('pt-BR')}  ·  Pág. ${pageNum}`,
+          PW / 2, PH - 6, { align: 'center' }
+        );
+      }
+
+      // ── CABEÇALHO ──────────────────────────────────────────────
+      doc.setFillColor(...C_PRIMARY);
+      doc.rect(0, 0, PW, 22, 'F');
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...C_WHITE);
+      doc.text('Diario de Enxaqueca', ML, 10);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Periodo: ${formatDateBR(inicio)} a ${formatDateBR(fim)}  |  ${keys.length} registro(s)`,
+        ML, 17
+      );
+      y = 28;
+
+      // ── REGISTROS ──────────────────────────────────────────────
+      const records = keys.map(k => registros[k]);
+
+      for (let ri = 0; ri < records.length; ri++) {
+        const r    = records[ri];
+        const sono = r.sono || {};
+        const alim = r.alimentacao || {};
+
+        // Estimar altura mínima do card (cabeçalho + linhas fixas)
+        checkY(80);
+
+        const cardX = ML;
+        const cardW = CW;
+        const cardStartY = y;
+
+        // Cabeçalho do card
+        doc.setFillColor(...C_PRIMARY);
+        doc.roundedRect(cardX, y, cardW, 9, 2, 2, 'F');
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C_WHITE);
+        doc.text(formatDateBR(r.data), cardX + 3, y + 6.2);
+
+        // Badge de intensidade
+        const dc    = dorColor(r.intensidadeDor);
+        const dlbl  = dorLabel(r.intensidadeDor);
+        const badgeW = 28;
+        doc.setFillColor(...dc);
+        doc.roundedRect(cardX + cardW - badgeW - 2, y + 1.5, badgeW, 6, 2, 2, 'F');
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C_WHITE);
+        doc.text(dlbl, cardX + cardW - badgeW / 2 - 2, y + 5.7, { align: 'center' });
+
+        y += 10;
+
+        // Linhas de dados
+        const COL1 = 36; // largura coluna label
+        const COL2 = cardW - COL1;
+        const MAX_CHARS = Math.floor(COL2 / 2.1); // aprox chars por linha a 8pt
+
+        const rows = [
+          ['Sono',          `${sono.horaDormir || '--'} -> ${sono.horaAcordar || '--'}  |  Qualidade: ${starsStr(sono.qualidade)}`],
+          ['Alimentacao',   [
+              alim.manha ? 'Manha: ' + alim.manha : '',
+              alim.tarde ? 'Tarde: ' + alim.tarde : '',
+              alim.noite ? 'Noite: ' + alim.noite : ''
+            ].filter(Boolean).join('  /  ') || '—'],
+          ['Intestino',     r.intestino || '—'],
+          ['Ativ. Fisica',  r.atividadeFisica || '—'],
+          ['Emocional',     r.emocional || '—'],
+          ['Clima',         r.clima || '—'],
+          ['Ciclo Menstr.', r.cicloMenstrual || '—'],
+          ['Medicamentos',  (r.medicamentos && r.medicamentos.length) ? r.medicamentos.join(', ') : '—'],
+        ];
+        if (r.observacoes) rows.push(['Observacoes', r.observacoes]);
+
+        let stripe = false;
+        for (const [label, value] of rows) {
+          const lines = wrapText(doc, value, MAX_CHARS);
+          const rowH  = Math.max(6, lines.length * 4.5 + 2);
+
+          checkY(rowH + 2);
+          // Se mudou de página, redraw não tem o card acima — ok, continua
+          if (stripe) {
+            doc.setFillColor(...C_STRIPE);
+            doc.rect(cardX, y, cardW, rowH, 'F');
+          }
+
+          // Label
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...C_DARK);
+          doc.text(label, cardX + 2, y + 4.2);
+
+          // Valor (multi-linha)
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(60, 60, 60);
+          lines.forEach((ln, li) => {
+            doc.text(ln, cardX + COL1, y + 4.2 + li * 4.5);
+          });
+
+          // Linha separadora
+          doc.setDrawColor(199, 210, 254);
+          doc.setLineWidth(0.2);
+          doc.line(cardX, y + rowH, cardX + cardW, y + rowH);
+
+          y += rowH;
+          stripe = !stripe;
+        }
+
+        // Borda do card completo
+        doc.setDrawColor(...C_PRIMARY);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(cardX, cardStartY, cardW, y - cardStartY, 2, 2, 'S');
+
+        y += 7; // espaço entre cards
+
+        if (ri < records.length - 1) checkY(20);
+      }
+
+      // Rodapé da última página
+      drawFooter();
+
+      const filename = `enxaqueca_${inicio}_ate_${fim}.pdf`;
+      doc.save(filename);
+
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      alert('Erro ao gerar PDF: ' + err.message + '\n\nVerifique se está conectado à internet para carregar a biblioteca jsPDF.');
+    }
+  }, 200);
+}
+
+// ===== INIT =====
+(function init() {
+  updateHeaderDate();
+  document.getElementById('data-registro').value = todayStr();
+  renderMedCadastrados();
+  validateForm();
+  checkStorage();
+  loadRecordForDate(todayStr());
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
